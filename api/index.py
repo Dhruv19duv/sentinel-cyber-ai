@@ -5,10 +5,12 @@ Heavy ML/AI dependencies (torch, transformers, etc.) run on AWS EC2.
 """
 import sys
 import os
+import json
 import logging
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
 # Mark as Vercel environment so the app can skip heavy imports
 os.environ["SENTINEL_PLATFORM"] = "vercel"
@@ -20,8 +22,37 @@ logger = logging.getLogger("sentinel-vercel")
 
 logger.info("🚀 Starting Sentinel Cyber AI on Vercel (lightweight mode)")
 
-from src.api.server import create_app
+# Verify critical files exist
+landing_page = os.path.join(project_root, "src", "api", "landing_page.html")
+if os.path.exists(landing_page):
+    logger.info(f"✅ landing_page.html found at {landing_page}")
+else:
+    logger.error(f"❌ landing_page.html NOT found at {landing_page}")
+    # List what's available
+    src_api = os.path.join(project_root, "src", "api")
+    if os.path.exists(src_api):
+        logger.info(f"Files in src/api/: {os.listdir(src_api)}")
 
-app = create_app()
-
-logger.info("✅ Sentinel Cyber AI ready on Vercel")
+try:
+    from src.api.server import create_app
+    app = create_app()
+    logger.info("✅ Sentinel Cyber AI ready on Vercel")
+except Exception as e:
+    logger.error(f"❌ Failed to create app: {e}", exc_info=True)
+    # Fallback: create a minimal app that returns error info
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    app = FastAPI(title="Sentinel Cyber AI (Vercel Error)")
+    
+    @app.get("/")
+    @app.get("/{path:path}")
+    async def error_route(path=""):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": f"App creation failed: {str(e)}",
+                "hint": "Check Vercel build logs for details"
+            }
+        )
+    
+    logger.warning("⚠️ Using fallback error app")
