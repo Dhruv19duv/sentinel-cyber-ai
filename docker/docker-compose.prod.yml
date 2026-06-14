@@ -1,0 +1,345 @@
+name: sentinel-prod
+
+x-shared-env: &shared-env
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  SENTINEL_LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-INFO}
+  TZ: ${TZ:-UTC}
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: sentinel-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinel}
+      POSTGRES_USER: ${POSTGRES_USER:-sentinel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinel_secret}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sentinel} -d ${POSTGRES_DB:-sentinel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # ── Redis Cache ──
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  # ── Sentinel API (Primary) ──
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    image: sentinel-cyber-ai:${SENTINEL_VERSION:-latest}
+    container_name: sentinel-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *shared-env
+      SENTINEL_API_KEY: ${SENTINEL_API_KEY:-}
+      SENTINEL_CORS_ORIGINS: ${SENTINEL_CORS_ORIGINS:-https://sentinel-ai.dev}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD:-sentinel_secret}@postgres:5432/${POSTGRES_DB:-sentinel}
+      REDIS_URL: redis://redis:6379/0
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    volumes:
+      - sentinel-data:/app/data
+      - sentinel-outputs:/app/outputs
+      - sentinel-config:/app/config
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Sentinel Dashboard (WebSocket) ──
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    image: sentinel-cyber-ai:${SENTINEL_VERSION:-latest}
+    container_name: sentinel-dashboard
+    depends_on:
+      - api
+    environment:
+      <<: *shared-env
+      SENTINEL_API_URL: http://api:8080
+    command: ["python", "-m", "src.dashboard.dashboard_server"]
+    expose:
+      - "8500"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8500/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # ── Sentinel Worker (Background Tasks) ──
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    image: sentinel-cyber-ai:${SENTINEL_VERSION:-latest}
+    container_name: sentinel-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *shared-env
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD:-sentinel_secret}@postgres:5432/${POSTGRES_DB:-sentinel}
+      REDIS_URL: redis://redis:6379/0
+      SENTINEL_WORKER_CONCURRENCY: ${SENTINEL_WORKER_CONCURRENCY:-2}
+      SENTINEL_API_KEY: ${SENTINEL_API_KEY:-}
+    command: ["python", "-m", "src.monitoring.worker"]
+    volumes:
+      - sentinel-data:/app/data
+      - sentinel-outputs:/app/outputs
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      replicas: ${WORKER_REPLICAS:-1}
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 384M
+
+  # ── Certbot (Let's Encrypt SSL) ──
+  certbot:
+    image: certbot/certbot:v2.11.0
+    container_name: sentinel-certbot
+    profiles:
+      - ssl
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt:rw
+      - certbot-www:/var/www/certbot:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        trap 'exit 0' TERM;
+        # Install docker CLI for nginx reload (certbot image is Debian-based)
+        if ! command -v docker > /dev/null 2>&1; then
+          apt-get update -qq && apt-get install -y -qq docker.io 2>/dev/null || true
+        fi
+        while true; do
+          certbot renew --webroot -w /var/www/certbot --quiet --deploy-hook \
+            "docker exec sentinel-nginx nginx -s reload && echo 'Nginx reloaded with new certs'";
+          sleep 43200;  # 12 hours
+        done
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+  # ── Nginx Reverse Proxy ──
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: sentinel-nginx
+    depends_on:
+      - api
+      - dashboard
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sentinel.conf:/etc/nginx/conf.d/sentinel.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:rw  # rw so certbot can write certs
+      - certbot-www:/var/www/certbot:ro
+      - ./nginx/static:/var/www/static:ro
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # ── Node Exporter (Host Metrics) ──
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: sentinel-node-exporter
+    profiles:
+      - monitoring
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    expose:
+      - "9100"
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+
+  # ── PostgreSQL Exporter ──
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: sentinel-postgres-exporter
+    profiles:
+      - monitoring
+    depends_on:
+      - postgres
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD:-sentinel_secret}@postgres:5432/${POSTGRES_DB:-sentinel}?sslmode=disable"
+    expose:
+      - "9187"
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+
+  # ── Prometheus Monitoring ──
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: sentinel-prometheus
+    profiles:
+      - monitoring
+    depends_on:
+      - api
+      - node-exporter
+      - postgres-exporter
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=15d"
+    expose:
+      - "9090"
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+
+  # ── Grafana Dashboards ──
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: sentinel-grafana
+    profiles:
+      - monitoring
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-sentinel}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    expose:
+      - "3000"
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  sentinel-data:
+    driver: local
+  sentinel-outputs:
+    driver: local
+  sentinel-config:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  certbot-www:
+    driver: local
+
+networks:
+  sentinel-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

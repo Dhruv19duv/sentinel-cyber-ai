@@ -1,0 +1,30 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sentinel.fullname" . }}-ingress
+  labels:
+    app.kubernetes.io/name: {{ include "sentinel.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "sentinel.fullname" $ }}-{{ .service }}
+                port:
+                  number: {{ if eq .service "dashboard" }}{{ $.Values.dashboard.port }}{{ else }}{{ $.Values.api.port | default 8080 }}{{ end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

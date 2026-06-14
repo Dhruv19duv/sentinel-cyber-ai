@@ -1,0 +1,35 @@
+apiVersion: v2
+name: sentinel
+description: Helm chart for Sentinel Cyber AI — Enterprise Multi-Agent Cybersecurity Platform
+type: application
+version: 2.0.0
+appVersion: "2.0.0"
+icon: https://raw.githubusercontent.com/sentinel-cyber-ai/sentinel/main/docs/icon.png
+
+keywords:
+  - cybersecurity
+  - ai
+  - vulnerability-detection
+  - multi-agent
+  - security-scanning
+
+home: https://sentinel-ai.dev
+sources:
+  - https://github.com/sentinel-cyber-ai/sentinel
+
+maintainers:
+  - name: Sentinel Team
+    email: team@sentinel-ai.dev
+    url: https://sentinel-ai.dev
+
+dependencies:
+  - name: postgresql
+    version: "~15.5.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+    alias: postgresql
+  - name: redis
+    version: "~19.6.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+    alias: redis

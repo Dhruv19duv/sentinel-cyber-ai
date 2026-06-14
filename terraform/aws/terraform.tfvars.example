@@ -1,0 +1,71 @@
+# =============================================================================
+# Sentinel Cyber AI — Terraform AWS Example Variables
+# Budget-friendly defaults: ~$25-40/mo on AWS
+#
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   # Edit terraform.tfvars with your values
+#   terraform init
+#   terraform plan -out=tfplan
+#   terraform apply tfplan
+# =============================================================================
+
+# ── General ──
+aws_region  = "us-east-1"
+environment = "production"
+
+# ── EC2 ──
+# t3.small = ~$15-20/mo (2 vCPU, 2GB RAM, burstable) — ⚠️ NOT RECOMMENDED (out of memory)
+# t3.medium = ~$30-35/mo (2 vCPU, 4GB RAM, burstable) — ✅ RECOMMENDED MINIMUM
+# t3.large = ~$60-70/mo (2 vCPU, 8GB RAM, burstable)
+ec2_instance_type = "t3.medium"
+ec2_volume_size   = 30
+
+# SSH key pair name (create in AWS console first, or leave empty to auto-generate)
+ec2_key_name = ""
+
+# Restrict SSH to your IP for security:
+# ssh_allowed_cidrs = ["203.0.113.1/32"]
+ssh_allowed_cidrs = ["0.0.0.0/0"]
+
+# ── RDS PostgreSQL (Optional — adds ~$15/mo) ──
+# Set to true for managed PostgreSQL with automated backups
+# Set to false (default) to run PostgreSQL in Docker on the EC2
+enable_rds          = false
+rds_instance_class  = "db.t3.micro"  # Free tier eligible
+rds_allocated_storage = 20
+
+# ── S3 Buckets ──
+# Automatically created for data, outputs, and backup storage
+s3_bucket_name_prefix = "sentinel"
+enable_s3_backups     = true
+
+# ── CloudFront CDN (Optional — adds ~$5-10/mo) ──
+enable_cloudfront = false
+
+# ── Route53 DNS (Optional — requires hosted zone) ──
+enable_route53      = false
+route53_zone_name   = "sentinel-ai.dev"
+api_subdomain       = "api"
+dashboard_subdomain = "dashboard"
+
+# ── Sentinel Configuration ──
+# Leave empty to auto-generate a random API key
+# sentinel_api_key = ""
+
+# Optional: GitHub token for auto-scan on push integrations
+# sentinel_github_token = "ghp_your-token-here"
+
+# Optional: Slack webhook for alert notifications
+# sentinel_slack_webhook = "https://hooks.slack.com/services/..."
+
+# Optional: Discord webhook for alert notifications
+# sentinel_discord_webhook = "https://discord.com/api/webhooks/..."
+
+# CORS allowed origins (comma-separated)
+sentinel_cors_origins = "*"
+
+# ── Git Repository ──
+# The repository containing the Sentinel code to deploy
+git_repo_url = "https://github.com/sentinel-cyber-ai/sentinel.git"
+git_branch   = "main"

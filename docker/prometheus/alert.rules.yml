@@ -1,0 +1,156 @@
+# =============================================================================
+# Sentinel Cyber AI — Prometheus Alerting Rules
+# Production alerts for API, infrastructure, and security events
+# =============================================================================
+
+groups:
+  # ── API Alerts ──
+  - name: sentinel-api
+    interval: 30s
+    rules:
+      - alert: APIDown
+        expr: up{job="sentinel-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Sentinel API is down"
+          description: "API endpoint {{ $labels.instance }} has been unreachable for >1m."
+          runbook_url: "https://github.com/sentinel-cyber-ai/sentinel/wiki/Runbook:APIDown"
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="sentinel-api"}[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "API p95 latency >2s"
+          description: "API p95 latency is {{ $value }}s for the last 5 minutes."
+
+      - alert: APIHighErrorRate
+        expr: rate(http_requests_total{job="sentinel-api", status=~"5.."}[5m]) / rate(http_requests_total{job="sentinel-api"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "API error rate >5%"
+          description: "API 5xx error rate is {{ $value | humanizePercentage }} over 5m."
+
+      - alert: APIRateLimited
+        expr: rate(http_requests_total{job="sentinel-api", status="429"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "API rate limiting active"
+          description: "Rate-limited requests: {{ $value | humanize }} per second over 5m."
+
+  # ── Dashboard Alerts ──
+  - name: sentinel-dashboard
+    interval: 30s
+    rules:
+      - alert: DashboardDown
+        expr: up{job="sentinel-dashboard"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Sentinel Dashboard is down"
+          description: "Dashboard {{ $labels.instance }} has been unreachable for >1m."
+
+      - alert: DashboardWebSocketErrors
+        expr: rate(websocket_errors_total{job="sentinel-dashboard"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Dashboard WebSocket errors increasing"
+          description: "WebSocket error rate: {{ $value | humanize }} per second."
+
+  # ── Infrastructure Alerts ──
+  - name: sentinel-infrastructure
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Host memory >90% used"
+          description: "Memory usage: {{ $value | humanizePercentage }}. Consider scaling up."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Disk space <10% remaining"
+          description: "Disk {{ $labels.mountpoint }} has {{ $value | humanizePercentage }} free."
+
+      - alert: DiskSpaceWarning
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.2
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Disk space <20% remaining"
+          description: "Disk {{ $labels.mountpoint }} has {{ $value | humanizePercentage }} free."
+
+  # ── Security Alerts ──
+  - name: sentinel-security
+    interval: 30s
+    rules:
+      - alert: CriticalVulnerabilityFound
+        expr: sentinel_critical_findings_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Critical vulnerability detected by Sentinel"
+          description: "{{ $value }} critical finding(s) in the latest scan results."
+
+      - alert: AnalysisPipelineFailure
+        expr: rate(sentinel_analysis_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Security analysis pipeline failing"
+          description: "Analysis errors: {{ $value | humanize }} per second."
+
+  # ── Prometheus Self-Monitoring ──
+  - name: sentinel-monitoring
+    interval: 30s
+    rules:
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Prometheus target {{ $labels.instance }} is down"
+          description: "Target {{ $labels.job }}/{{ $labels.instance }} has been down for >2m."
+
+      - alert: PrometheusRuleEvaluationFailed
+        expr: rate(prometheus_rule_evaluation_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Prometheus rule evaluation failures"
+          description: "{{ $value | humanize }} rule eval failures per second."

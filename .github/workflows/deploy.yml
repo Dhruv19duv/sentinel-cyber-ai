@@ -1,0 +1,314 @@
+name: Sentinel Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy environment"
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      skip_tests:
+        description: "Skip test suite"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ github.ref }}-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ── Test Suite ──
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.inputs.skip_tests }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio pytest-cov
+          pip install -r requirements.txt 2>/dev/null || true
+          pip install -e . 2>/dev/null || true
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -q --tb=short --cov=src --cov-report=term-missing 2>&1 | tail -30
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: .coverage
+          retention-days: 7
+
+  # ── Docker Image Build & Push ──
+  docker:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: success()
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ github.event.inputs.environment || 'staging' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Notify Slack (build complete)
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -s -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"🔨 Docker build *${STATUS}* for \`${{ github.sha }}\`\"}" \
+              "${{ secrets.SLACK_WEBHOOK_URL }}" 2>/dev/null || true
+          fi
+
+  # ── Deploy to Staging ──
+  staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: success()
+    environment:
+      name: staging
+      url: https://staging.${{ secrets.DEPLOY_DOMAIN || 'sentinel-ai.dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          known_hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS || 'just-verified' }}
+
+      - name: Add host to known_hosts
+        if: secrets.DEPLOY_KNOWN_HOSTS != ''
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to staging server
+        run: |
+          SSH_HOST="${{ secrets.DEPLOY_SSH_HOST || 'staging.example.com' }}"
+          SSH_USER="${{ secrets.DEPLOY_SSH_USER || 'deploy' }}"
+          SSH_PORT="${{ secrets.DEPLOY_SSH_PORT || '22' }}"
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha_short }}"
+
+          echo "🚀 Deploying to staging ($SSH_HOST)..."
+          echo "   Image: $IMAGE_TAG"
+          echo ""
+
+          ssh -p "$SSH_PORT" "${SSH_USER}@${SSH_HOST}" bash -s << 'REMOTESCRIPT'
+            set -e
+            cd ~/sentinel-cyber-ai || git clone https://github.com/${{ github.repository }}.git ~/sentinel-cyber-ai && cd ~/sentinel-cyber-ai
+
+            # Pull latest code
+            git fetch origin
+            git reset --hard origin/main
+
+            # Pull the new Docker image
+            docker compose -f docker/docker-compose.prod.yml pull api dashboard worker
+
+            # Restart services
+            docker compose -f docker/docker-compose.prod.yml up -d --no-deps api dashboard worker nginx
+
+            # Verify health
+            sleep 10
+            HEALTH=$(curl -sfk https://localhost/health 2>/dev/null && echo "UP" || echo "DOWN")
+            echo "---"
+            echo "API Health: $HEALTH"
+            docker compose -f docker/docker-compose.prod.yml ps --status running
+REMOTESCRIPT
+
+          echo "✅ Staging deploy complete! Check: https://staging.${{ secrets.DEPLOY_DOMAIN || 'sentinel-ai.dev' }}"
+
+  # ── Deploy to Production ──
+  production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker, staging]
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://${{ secrets.DEPLOY_DOMAIN || 'sentinel-ai.dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.DEPLOY_SSH_KEY_PROD || secrets.DEPLOY_SSH_KEY }}
+          known_hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS_PROD || secrets.DEPLOY_KNOWN_HOSTS || 'just-verified' }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          HOST="${{ secrets.DEPLOY_SSH_HOST_PROD || secrets.DEPLOY_SSH_HOST }}"
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to production server
+        run: |
+          SSH_HOST="${{ secrets.DEPLOY_SSH_HOST_PROD || secrets.DEPLOY_SSH_HOST }}"
+          SSH_USER="${{ secrets.DEPLOY_SSH_USER_PROD || secrets.DEPLOY_SSH_USER || 'deploy' }}"
+          SSH_PORT="${{ secrets.DEPLOY_SSH_PORT_PROD || secrets.DEPLOY_SSH_PORT || '22' }}"
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+
+          echo "🚀 Deploying to PRODUCTION ($SSH_HOST)..."
+          echo "   Image: $IMAGE_TAG"
+          echo "   ⚠️  This is a production deployment!"
+          echo ""
+
+          ssh -p "$SSH_PORT" "${SSH_USER}@${SSH_HOST}" bash -s << 'REMOTESCRIPT'
+            set -e
+            cd ~/sentinel-cyber-ai
+
+            echo "📥 Pulling latest Docker images..."
+            docker compose -f docker/docker-compose.prod.yml pull
+
+            echo "🔄 Restarting services with zero-downtime..."
+            docker compose -f docker/docker-compose.prod.yml up -d --no-deps --scale api=2 api
+            sleep 5
+            docker compose -f docker/docker-compose.prod.yml up -d --no-deps --scale api=1 api
+            docker compose -f docker/docker-compose.prod.yml up -d --no-deps dashboard worker nginx
+
+            echo "🔍 Running health checks..."
+            sleep 15
+            for i in 1 2 3; do
+              HEALTH=$(curl -sfk https://localhost/health 2>/dev/null && echo "UP" || echo "DOWN")
+              echo "   Check $i/3: $HEALTH"
+              if [ "$HEALTH" = "UP" ]; then break; fi
+              sleep 5
+            done
+
+            echo "---"
+            echo "📊 Running containers:"
+            docker compose -f docker/docker-compose.prod.yml ps --status running
+
+            echo "📦 Cleaning up old images..."
+            docker image prune -f --filter "until=24h" 2>/dev/null || true
+REMOTESCRIPT
+
+          echo "✅ Production deploy complete!"
+      # Notify on failure
+      - name: Notify on deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment FAILED!"
+          echo "Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  # ── Health Check Monitor (post-deploy) ──
+  monitor:
+    name: Post-Deploy Health Check
+    runs-on: ubuntu-latest
+    needs: [production]
+    if: success() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Wait for deployment to settle
+        run: sleep 30
+
+      - name: Verify production endpoints
+        run: |
+          DOMAIN="${{ secrets.DEPLOY_DOMAIN || 'sentinel-ai.dev' }}"
+          echo "🔍 Post-deploy health check for $DOMAIN..."
+
+          # Check main endpoints
+          for endpoint in "https://api.$DOMAIN/health" "https://api.$DOMAIN/docs" "https://dashboard.$DOMAIN/"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$endpoint" 2>/dev/null || echo "FAIL")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ]; then
+              echo "   ✅ $endpoint → $STATUS"
+            else
+              echo "   ❌ $endpoint → $STATUS"
+            fi
+          done
+
+      - name: Create deployment status badge
+        if: always()
+        run: |
+          echo "✅ Post-deploy checks complete. Status: ${{ job.status }}"
+
+  # ── Cleanup ──
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    needs: [production]
+    if: success() && github.ref == 'refs/heads/main'
+    permissions:
+      packages: write
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete old untagged images via GHCR API
+        run: |
+          # Keep only the 10 most recent images
+          PACKAGE_VERSION_IDS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/user/packages/container/${{ github.repository }}/versions" \
+            | jq -r '.[].id' | tail -n +11)
+          for id in $PACKAGE_VERSION_IDS; do
+            curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/user/packages/container/${{ github.repository }}/versions/$id" &
+          done
+          wait
+          echo "✅ Cleaned up old images"

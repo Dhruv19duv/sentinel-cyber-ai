@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+*.so
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.pytest_cache
+test-results-*/
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.local
+.env.production
+*.env
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/terraform.tfstate
+terraform/**/terraform.tfstate.backup
+terraform/**/*.tfvars
+!terraform/**/terraform.tfvars.example
+
+# Docker
+docker/**/.env
+docker/data/
+docker/postgres/data/
+
+# Project data
+data/*
+!data/.gitkeep
+outputs/*
+!outputs/.gitkeep
+notebooks/.ipynb_checkpoints/
+
+# OS
+Thumbs.db
+*.dll
+*.exe
+
+# k6
+tests/k6/results/

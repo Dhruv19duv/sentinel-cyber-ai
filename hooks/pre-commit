@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Sentinel Pre-Commit Hook — Automatically scan staged files for vulnerabilities.
+
+Installation:
+    cp hooks/pre-commit .git/hooks/pre-commit
+    chmod +x .git/hooks/pre-commit
+
+This hook runs Sentinel's code scanner on all staged Python, JavaScript, TypeScript,
+Java, Go, and Rust files before each commit. If vulnerabilities are found, the
+commit is blocked unless --no-verify is used.
+
+Configuration:
+    Set SENTINEL_API_URL to point to your Sentinel API server
+    Set SENTINEL_API_KEY for authentication
+    Set SENTINEL_BLOCK_LEVEL to set severity threshold (CRITICAL, HIGH, MEDIUM, LOW)
+    Set SENTINEL_SKIP to skip scanning (set to "1")
+"""
+
+import os
+import sys
+import json
+import subprocess
+import re
+
+# ── Configuration ──
+
+API_URL = os.environ.get("SENTINEL_API_URL", "http://localhost:8080")
+API_KEY = os.environ.get("SENTINEL_API_KEY", "")
+BLOCK_LEVEL = os.environ.get("SENTINEL_BLOCK_LEVEL", "HIGH").upper()
+SKIP = os.environ.get("SENTINEL_SKIP", "0") == "1"
+
+# Files to scan (by extension)
+SCAN_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".go", ".rs", ".cpp", ".c", ".php", ".rb"}
+
+# Severity levels
+SEVERITY_ORDER = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
+
+
+def get_staged_files() -> list:
+    """Get list of staged files that match our scan extensions."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
+        capture_output=True, text=True,
+    )
+    files = []
+    for f in result.stdout.strip().split("\n"):
+        f = f.strip()
+        if f and any(f.endswith(ext) for ext in SCAN_EXTENSIONS) and os.path.exists(f):
+            files.append(f)
+    return files
+
+
+def get_file_diff(filepath: str) -> str:
+    """Get the staged diff for a specific file."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", filepath],
+        capture_output=True, text=True,
+    )
+    return result.stdout
+
+
+def analyze_with_api(code: str, filename: str) -> dict:
+    """Send code to Sentinel API for analysis."""
+    import urllib.request
+    import urllib.error
+
+    url = f"{API_URL}/api/v1/analyze"
+    data = json.dumps({
+        "query": f"Analyze this code from {filename} for security vulnerabilities:\n```\n{code[:4000]}\n```",
+        "scan_mode": "quick",
+    }).encode()
+
+    headers = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
+
+    try:
+        req = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json.loads(response.read().decode())
+    except Exception as e:
+        return {"status": "error", "error": str(e), "findings": []}
+
+
+def analyze_locally(code: str) -> dict:
+    """Fallback: analyze code using local pattern matching."""
+    findings = []
+
+    # Pattern-based scanning (simplified version of scanner_agent)
+    patterns = [
+        (r"execute\(.*f\s*[\"'].*\{", "CRITICAL", "SQL Injection", "Possible SQL injection via f-string"),
+        (r"shell\s*=\s*True", "CRITICAL", "Command Injection", "shell=True enables command injection"),
+        (r"\.innerHTML\s*=", "HIGH", "XSS", "innerHTML allows script injection"),
+        (r"eval\s*\(", "CRITICAL", "Code Injection", "eval() executes arbitrary code"),
+        (r"pickle\.loads?\s*\(", "CRITICAL", "Insecure Deserialization", "pickle can execute arbitrary code"),
+        (r"os\.system\s*\(", "CRITICAL", "Command Injection", "os.system executes shell commands"),
+        (r"subprocess\.run\(.*shell=True", "CRITICAL", "Command Injection", "shell=True with subprocess.run"),
+        (r"password\s*=\s*[\"'][^\"']+[\"']", "HIGH", "Hardcoded Password", "Hardcoded credential detected"),
+        (r"api[_-]?key\s*=\s*[\"'][^\"']+[\"']", "HIGH", "Hardcoded API Key", "Hardcoded API key detected"),
+        (r"secret\s*=\s*[\"'][^\"']+[\"']", "HIGH", "Hardcoded Secret", "Hardcoded secret detected"),
+        (r"md5\s*\(", "MEDIUM", "Weak Hash", "MD5 is not cryptographically secure"),
+        (r"random\.(?:choice|randint|randrange)", "MEDIUM", "Insecure Randomness", "Use secrets module for security"),
+    ]
+
+    for pattern, severity, title, desc in patterns:
+        if re.search(pattern, code, re.IGNORECASE | re.MULTILINE):
+            findings.append({
+                "title": title,
+                "description": desc,
+                "severity": severity,
+            })
+
+    return {
+        "status": "success",
+        "findings": findings,
+        "confidence": 0.7 if findings else 0.95,
+    }
+
+
+def should_block(findings: list) -> tuple:
+    """Check if findings meet the block threshold.
+
+    Returns:
+        (should_block: bool, blocking_findings: list)
+    """
+    min_level = SEVERITY_ORDER.get(BLOCK_LEVEL, 3)
+    blocking = [f for f in findings if SEVERITY_ORDER.get(f.get("severity", "INFO"), 0) >= min_level]
+    return len(blocking) > 0, blocking
+
+
+def main():
+    if SKIP:
+        print("🔐 Sentinel: SKIPPED (SENTINEL_SKIP=1)")
+        sys.exit(0)
+
+    files = get_staged_files()
+    if not files:
+        print("🔐 Sentinel: No staged files to scan")
+        sys.exit(0)
+
+    print(f"🔐 Sentinel: Scanning {len(files)} staged file(s)...")
+
+    all_findings = []
+    api_available = False
+
+    # Try API first
+    try:
+        sample = open(files[0], "r", errors="ignore").read()
+        test_result = analyze_with_api(sample[:100], files[0])
+        api_available = test_result.get("status") != "error"
+    except Exception:
+        api_available = False
+
+    for filepath in files:
+        try:
+            with open(filepath, "r", errors="ignore") as f:
+                code = f.read()
+
+            if not code.strip():
+                continue
+
+            if api_available:
+                result = analyze_with_api(code, filepath)
+            else:
+                result = analyze_locally(code)
+
+            findings = result.get("findings", [])
+            for finding in findings:
+                finding["file"] = filepath
+
+            all_findings.extend(findings)
+
+            if findings:
+                print(f"  {'!' if any(f.get('severity') in ('CRITICAL', 'HIGH') for f in findings) else '?'} {filepath}: {len(findings)} finding(s)")
+            else:
+                print(f"  ✓ {filepath}: clean")
+
+        except Exception as e:
+            print(f"  ⚠ {filepath}: Error - {e}")
+
+    # Summary
+    total = len(all_findings)
+    critical = sum(1 for f in all_findings if f.get("severity") == "CRITICAL")
+    high = sum(1 for f in all_findings if f.get("severity") == "HIGH")
+    medium = sum(1 for f in all_findings if f.get("severity") == "MEDIUM")
+
+    print(f"\n{'='*50}")
+    print(f"🔐 Sentinel Security Scan Complete")
+    print(f"{'='*50}")
+    print(f"Files scanned: {len(files)}")
+    print(f"Total findings: {total}")
+    if critical:
+        print(f"  🔴 Critical: {critical}")
+    if high:
+        print(f"  🟠 High: {high}")
+    if medium:
+        print(f"  🟡 Medium: {medium}")
+
+    # Check block threshold
+    should_block_result, blocking = should_block(all_findings)
+    if should_block_result:
+        print(f"\n❌ BLOCKED: Found {len(blocking)} finding(s) at {BLOCK_LEVEL} level or above")
+        for f in blocking:
+            print(f"  - [{f.get('severity')}] {f.get('title')} in {f.get('file', '?')}")
+        print("\nTo commit anyway: git commit --no-verify")
+        print("To adjust threshold: export SENTINEL_BLOCK_LEVEL=CRITICAL")
+        sys.exit(1)
+    else:
+        print(f"\n✅ Scan passed (threshold: {BLOCK_LEVEL})")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

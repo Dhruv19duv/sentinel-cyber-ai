@@ -1,0 +1,1872 @@
+{
+  "version": 4,
+  "terraform_version": "1.10.5",
+  "serial": 59,
+  "lineage": "bd46303a-c77b-9a3b-1b5a-feb69bf22d0d",
+  "outputs": {
+    "api_health_url": {
+      "value": "http://34.200.160.84/health",
+      "type": "string"
+    },
+    "api_url": {
+      "value": "http://34.200.160.84",
+      "type": "string"
+    },
+    "dashboard_url": {
+      "value": "http://34.200.160.84:8500",
+      "type": "string"
+    },
+    "deployment_commands": {
+      "value": "# Connect to the server:\nssh -i sentinel-key.pem ubuntu@34.200.160.84\n\n# Check deployment logs:\nsudo journalctl -u sentinel -f\n\n# View Docker containers:\ndocker ps\n\n# Check API health:\ncurl http://34.200.160.84/health\n\n# View post-deployment status:\n./scripts/deploy.sh --status\n",
+      "type": "string"
+    },
+    "ec2_key_name": {
+      "value": "sentinel-production-key",
+      "type": "string"
+    },
+    "ec2_public_dns": {
+      "value": "ec2-34-200-160-84.compute-1.amazonaws.com",
+      "type": "string"
+    },
+    "ec2_public_ip": {
+      "value": "34.200.160.84",
+      "type": "string"
+    },
+    "grafana_url": {
+      "value": "Grafana not available without RDS enabled",
+      "type": "string"
+    },
+    "next_steps": {
+      "value": "1. Configure DNS: Point your domain to 34.200.160.84\n2. Add SSL: Run ./scripts/setup-ssl.sh on the server\n3. Set up backups: Configure ./scripts/backup.sh\n4. Verify API: curl http://34.200.160.84/health\n",
+      "type": "string"
+    },
+    "s3_buckets": {
+      "value": [
+        "sentinel-production-data",
+        "sentinel-production-outputs",
+        "sentinel-production-backups"
+      ],
+      "type": [
+        "list",
+        "string"
+      ]
+    },
+    "sentinel_api_key": {
+      "value": "UjcPVDoVGfVm8RLuZILZh7gxrHIZJXtN",
+      "type": "string",
+      "sensitive": true
+    },
+    "ssh_command": {
+      "value": "ssh -i sentinel-key.pem ubuntu@34.200.160.84",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_cloudwatch_log_group",
+      "name": "sentinel",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:logs:us-east-1:334317073419:log-group:/sentinel/production",
+            "id": "/sentinel/production",
+            "kms_key_id": "",
+            "log_group_class": "STANDARD",
+            "name": "/sentinel/production",
+            "name_prefix": "",
+            "retention_in_days": 30,
+            "skip_destroy": false,
+            "tags": {
+              "Name": "sentinel-production-logs"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-logs",
+              "Project": "Sentinel-Cyber-AI"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_eip",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "address": null,
+            "allocation_id": "eipalloc-053cd968dbaec6144",
+            "arn": "arn:aws:ec2:us-east-1:334317073419:elastic-ip/eipalloc-053cd968dbaec6144",
+            "associate_with_private_ip": null,
+            "association_id": "eipassoc-0335e50dacba49f01",
+            "carrier_ip": "",
+            "customer_owned_ip": "",
+            "customer_owned_ipv4_pool": "",
+            "domain": "vpc",
+            "id": "eipalloc-053cd968dbaec6144",
+            "instance": "i-062cda5d0f6d1a4a3",
+            "ipam_pool_id": null,
+            "network_border_group": "us-east-1",
+            "network_interface": "eni-05cf239400dc88d1b",
+            "private_dns": "ip-10-0-1-196.ec2.internal",
+            "private_ip": "10.0.1.196",
+            "ptr_record": "",
+            "public_dns": "ec2-34-200-160-84.compute-1.amazonaws.com",
+            "public_ip": "34.200.160.84",
+            "public_ipv4_pool": "amazon",
+            "tags": {
+              "Name": "sentinel-production-eip"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-eip",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxODAwMDAwMDAwMDAsInJlYWQiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "module.ec2.aws_iam_instance_profile.sentinel",
+            "module.ec2.aws_iam_role.sentinel",
+            "module.ec2.aws_instance.sentinel",
+            "module.ec2.aws_key_pair.generated",
+            "module.ec2.random_password.api_key",
+            "module.ec2.tls_private_key.main",
+            "module.rds.aws_db_instance.main",
+            "module.rds.aws_db_subnet_group.main",
+            "module.rds.aws_iam_role.rds_monitoring",
+            "module.rds.random_password.main",
+            "module.vpc.aws_security_group.ec2",
+            "module.vpc.aws_security_group.rds",
+            "module.vpc.aws_subnet.private",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_iam_instance_profile",
+      "name": "sentinel",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::334317073419:instance-profile/sentinel-production-instance-profile",
+            "create_date": "2026-06-13T17:38:56Z",
+            "id": "sentinel-production-instance-profile",
+            "name": "sentinel-production-instance-profile",
+            "name_prefix": "",
+            "path": "/",
+            "role": "sentinel-production-ec2-role",
+            "tags": null,
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "unique_id": "AIPAU3VWZWQFWJYNUHWAE"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.ec2.aws_iam_role.sentinel"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_iam_policy",
+      "name": "sentinel",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::334317073419:policy/sentinel-production-ec2-policy",
+            "attachment_count": 0,
+            "description": "",
+            "id": "arn:aws:iam::334317073419:policy/sentinel-production-ec2-policy",
+            "name": "sentinel-production-ec2-policy",
+            "name_prefix": "",
+            "path": "/",
+            "policy": "{\"Statement\":[{\"Action\":[\"s3:ListBucket\",\"s3:GetObject\",\"s3:PutObject\",\"s3:DeleteObject\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:s3:::sentinel-*\",\"arn:aws:s3:::sentinel-*/*\"]},{\"Action\":[\"cloudwatch:PutMetricData\",\"logs:CreateLogGroup\",\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"logs:DescribeLogStreams\"],\"Effect\":\"Allow\",\"Resource\":[\"*\"]}],\"Version\":\"2012-10-17\"}",
+            "policy_id": "ANPAU3VWZWQF6CLZLJDWH",
+            "tags": null,
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Project": "Sentinel-Cyber-AI"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "sentinel",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::334317073419:role/sentinel-production-ec2-role",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2026-06-13T17:38:55Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "sentinel-production-ec2-role",
+            "inline_policy": [],
+            "managed_policy_arns": [],
+            "max_session_duration": 3600,
+            "name": "sentinel-production-ec2-role",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": null,
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "unique_id": "AROAU3VWZWQFQHRUPB3HG"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "sentinel",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "sentinel-production-ec2-role-20260613173856740400000001",
+            "policy_arn": "arn:aws:iam::334317073419:policy/sentinel-production-ec2-policy",
+            "role": "sentinel-production-ec2-role"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.ec2.aws_iam_policy.sentinel",
+            "module.ec2.aws_iam_role.sentinel"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "sentinel",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "ami": "ami-0f8a61b66d1accaee",
+            "arn": "arn:aws:ec2:us-east-1:334317073419:instance/i-062cda5d0f6d1a4a3",
+            "associate_public_ip_address": true,
+            "availability_zone": "us-east-1a",
+            "capacity_reservation_specification": [
+              {
+                "capacity_reservation_preference": "open",
+                "capacity_reservation_target": []
+              }
+            ],
+            "cpu_core_count": 1,
+            "cpu_options": [
+              {
+                "amd_sev_snp": "",
+                "core_count": 1,
+                "threads_per_core": 2
+              }
+            ],
+            "cpu_threads_per_core": 2,
+            "credit_specification": [
+              {
+                "cpu_credits": "unlimited"
+              }
+            ],
+            "disable_api_stop": false,
+            "disable_api_termination": false,
+            "ebs_block_device": [],
+            "ebs_optimized": false,
+            "enable_primary_ipv6": null,
+            "enclave_options": [
+              {
+                "enabled": false
+              }
+            ],
+            "ephemeral_block_device": [],
+            "get_password_data": false,
+            "hibernation": false,
+            "host_id": "",
+            "host_resource_group_arn": null,
+            "iam_instance_profile": "sentinel-production-instance-profile",
+            "id": "i-062cda5d0f6d1a4a3",
+            "instance_initiated_shutdown_behavior": "stop",
+            "instance_lifecycle": "",
+            "instance_market_options": [],
+            "instance_state": "running",
+            "instance_type": "t3.small",
+            "ipv6_address_count": 0,
+            "ipv6_addresses": [],
+            "key_name": "sentinel-production-key",
+            "launch_template": [],
+            "maintenance_options": [
+              {
+                "auto_recovery": "default"
+              }
+            ],
+            "metadata_options": [
+              {
+                "http_endpoint": "enabled",
+                "http_protocol_ipv6": "disabled",
+                "http_put_response_hop_limit": 2,
+                "http_tokens": "required",
+                "instance_metadata_tags": "disabled"
+              }
+            ],
+            "monitoring": true,
+            "network_interface": [],
+            "outpost_arn": "",
+            "password_data": "",
+            "placement_group": "",
+            "placement_partition_number": 0,
+            "primary_network_interface_id": "eni-05cf239400dc88d1b",
+            "private_dns": "ip-10-0-1-196.ec2.internal",
+            "private_dns_name_options": [
+              {
+                "enable_resource_name_dns_a_record": false,
+                "enable_resource_name_dns_aaaa_record": false,
+                "hostname_type": "ip-name"
+              }
+            ],
+            "private_ip": "10.0.1.196",
+            "public_dns": "ec2-3-92-152-110.compute-1.amazonaws.com",
+            "public_ip": "3.92.152.110",
+            "root_block_device": [
+              {
+                "delete_on_termination": true,
+                "device_name": "/dev/sda1",
+                "encrypted": true,
+                "iops": 3000,
+                "kms_key_id": "arn:aws:kms:us-east-1:334317073419:key/9090cc69-1fce-4f69-9f40-15c90f52c46f",
+                "tags": null,
+                "tags_all": {
+                  "CostCenter": "sentinel-production",
+                  "Environment": "production",
+                  "ManagedBy": "Terraform",
+                  "Project": "Sentinel-Cyber-AI"
+                },
+                "throughput": 125,
+                "volume_id": "vol-0a9a680ff888e0e3d",
+                "volume_size": 30,
+                "volume_type": "gp3"
+              }
+            ],
+            "secondary_private_ips": [],
+            "security_groups": [],
+            "source_dest_check": true,
+            "spot_instance_request_id": "",
+            "subnet_id": "subnet-05fd2d15d0a6923eb",
+            "tags": {
+              "Name": "sentinel-production"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "tenancy": "default",
+            "timeouts": null,
+            "user_data": "5b872bdb076a90fa3373cba956f3fd5dc96511e8",
+            "user_data_base64": null,
+            "user_data_replace_on_change": false,
+            "volume_tags": null,
+            "vpc_security_group_ids": [
+              "sg-0cd7a176b052a2721"
+            ]
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "user_data"
+              }
+            ]
+          ],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMCwicmVhZCI6OTAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.ec2.aws_iam_instance_profile.sentinel",
+            "module.ec2.aws_iam_role.sentinel",
+            "module.ec2.aws_key_pair.generated",
+            "module.ec2.random_password.api_key",
+            "module.ec2.tls_private_key.main",
+            "module.rds.aws_db_instance.main",
+            "module.rds.aws_db_subnet_group.main",
+            "module.rds.aws_iam_role.rds_monitoring",
+            "module.rds.random_password.main",
+            "module.vpc.aws_security_group.ec2",
+            "module.vpc.aws_security_group.rds",
+            "module.vpc.aws_subnet.private",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "aws_key_pair",
+      "name": "generated",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:key-pair/sentinel-production-key",
+            "fingerprint": "52:79:f0:d3:a5:a1:48:d3:86:c5:bb:ce:b8:cf:28:7f",
+            "id": "sentinel-production-key",
+            "key_name": "sentinel-production-key",
+            "key_name_prefix": "",
+            "key_pair_id": "key-00904b21c83ccc575",
+            "key_type": "rsa",
+            "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDVqBMmy1N1Q+nIYq7FykQ3HvfdARHWVYLRErST93zpgkmci1mqwfncEOUABe/WgXpC7p55p51kIdLR3w6l2e1VQUvgh1oILlGNkAHbpWeDoZZblNixY3v2olcmR9xxe2TDyuKG94IkjnUOhvyF13R7pnei8e8PIo4UEkK5S8lT7Jvyn0HdBDKAbmwt1Fh8LnZLIiw9FAnNv+fum2YfIwSOT05K0FZF9b9sENODljuDd6eFFw1FaDhfeWU8qz0gxlYBtwu4GIsdj9+Tyca/9Q+M3rOu132naryn2crTKRiU8Lkdgp72e2uKW7J6zJyxqHneJAtykKlwFflL2nhX2Ggv",
+            "tags": {
+              "Name": "sentinel-production-key"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-key",
+              "Project": "Sentinel-Cyber-AI"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "module.ec2.tls_private_key.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "random_password",
+      "name": "api_key",
+      "provider": "provider[\"registry.terraform.io/hashicorp/random\"]",
+      "instances": [
+        {
+          "schema_version": 3,
+          "attributes": {
+            "bcrypt_hash": "$2a$10$Tlf6xVzRGRNX7LHv6dP/3.r5Z2kNMxGRPnUkv1hjgeiJdUCXoLFBS",
+            "id": "none",
+            "keepers": null,
+            "length": 32,
+            "lower": true,
+            "min_lower": 0,
+            "min_numeric": 0,
+            "min_special": 0,
+            "min_upper": 0,
+            "number": true,
+            "numeric": true,
+            "override_special": null,
+            "result": "UjcPVDoVGfVm8RLuZILZh7gxrHIZJXtN",
+            "special": false,
+            "upper": true
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "result"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "bcrypt_hash"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.ec2",
+      "mode": "managed",
+      "type": "tls_private_key",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/tls\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "algorithm": "RSA",
+            "ecdsa_curve": "P224",
+            "id": "302c2daa40e6f9ce5503e63171cf13d61043ca40",
+            "private_key_openssh": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdz\nc2gtcnNhAAAAAwEAAQAAAQEA1agTJstTdUPpyGKuxcpENx733QER1lWC0RK0k/d8\n6YJJnItZqsH53BDlAAXv1oF6Qu6eeaedZCHS0d8OpdntVUFL4IdaCC5RjZAB26Vn\ng6GWW5TYsWN79qJXJkfccXtkw8rihveCJI51Dob8hdd0e6Z3ovHvDyKOFBJCuUvJ\nU+yb8p9B3QQygG5sLdRYfC52SyIsPRQJzb/n7ptmHyMEjk9OStBWRfW/bBDTg5Y7\ng3enhRcNRWg4X3llPKs9IMZWAbcLuBiLHY/fk8nGv/UPjN6zrtd9p2q8p9nK0ykY\nlPC5HYKe9ntriluyesycsah53iQLcpCpcBX5S9p4V9hoLwAAA7hYFNFCWBTRQgAA\nAAdzc2gtcnNhAAABAQDVqBMmy1N1Q+nIYq7FykQ3HvfdARHWVYLRErST93zpgkmc\ni1mqwfncEOUABe/WgXpC7p55p51kIdLR3w6l2e1VQUvgh1oILlGNkAHbpWeDoZZb\nlNixY3v2olcmR9xxe2TDyuKG94IkjnUOhvyF13R7pnei8e8PIo4UEkK5S8lT7Jvy\nn0HdBDKAbmwt1Fh8LnZLIiw9FAnNv+fum2YfIwSOT05K0FZF9b9sENODljuDd6eF\nFw1FaDhfeWU8qz0gxlYBtwu4GIsdj9+Tyca/9Q+M3rOu132naryn2crTKRiU8Lkd\ngp72e2uKW7J6zJyxqHneJAtykKlwFflL2nhX2GgvAAAAAwEAAQAAAQAV9IAHUASC\n+9gVseJQy+Cno2SIDtiU5FOdhWUOAXQSEMPctMshi25QCWJm1rVXHxX/s8KQMMOx\nKvKdg2TfcR380UlpSK9dQNk7iU1Pk1coRR4MyiZcUCNIbFU1R1QlSy9HGV2ezedP\nN15bAE8Jt+Kt5CTOFztgHEZqVJgLr3iASZOHH+BEjpJ3QLH7uVruoUrjgctuVwZe\n5JCgr4YQ6OpxC86tFURyjtAALtXqnFOK7TZCisoRMLOdKo5+RG3az2NBvdH/M+s+\neWtbAj6bR/WPqFGV/shlqbV1yii3Xet3JX+1x2lDbt+cYwYQUOUaaPBFueArI4GA\nJU+MxzfYPTmZAAAAgHLTGM3swdoJlHUwWGyl9cvaXdM4q3/zCvAOfONki2p+fPuG\ntYcI7Y5N0qQ6l6TpgZq1trsDtu96nn6DcXUvg9tJ5Ck5cYqt9lsQTzkDZ9/oWVfD\nWePFY3nEMXD0PNHII0N1DbSGLvSw6+Fp8OJ1sAEoq5bL4XGWuNokDAji7gJ+AAAA\ngQDvFgOZgurFoV0DUghJTDk/Wrp9yFefAj3CwHm92LmnYcY8wh5Pvb1MfDpEfTpu\nJcWDgd1ItAN4kHcZPqmAkPaMMcQtcYkPXpv7GwANIOcIOAKFISHLND5ZKra8/GPN\n9B1vZjIjLIGT2qizlqPCLSaFJGIhOkte7HiUsd5jX7T7aQAAAIEA5MWExxtwzDvy\nehTmKyCrAxi/wqyFprAaccRuEsWHSTfuD6gO93dtg2C0oMxNnhFkxtUh/IYwPc72\n5+Qfa5WjMj+qpzGPtqbFJIbeOpSFy5bbCD5JP9xybF1t6713u192haveKD3pOqTS\ngrBs1+ITWX4NVk9RrZb9XnCimBj1y9cAAAAAAQID\n-----END OPENSSH PRIVATE KEY-----\n",
+            "private_key_pem": "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEA1agTJstTdUPpyGKuxcpENx733QER1lWC0RK0k/d86YJJnItZ\nqsH53BDlAAXv1oF6Qu6eeaedZCHS0d8OpdntVUFL4IdaCC5RjZAB26Vng6GWW5TY\nsWN79qJXJkfccXtkw8rihveCJI51Dob8hdd0e6Z3ovHvDyKOFBJCuUvJU+yb8p9B\n3QQygG5sLdRYfC52SyIsPRQJzb/n7ptmHyMEjk9OStBWRfW/bBDTg5Y7g3enhRcN\nRWg4X3llPKs9IMZWAbcLuBiLHY/fk8nGv/UPjN6zrtd9p2q8p9nK0ykYlPC5HYKe\n9ntriluyesycsah53iQLcpCpcBX5S9p4V9hoLwIDAQABAoIBABX0gAdQBIL72BWx\n4lDL4KejZIgO2JTkU52FZQ4BdBIQw9y0yyGLblAJYmbWtVcfFf+zwpAww7Eq8p2D\nZN9xHfzRSWlIr11A2TuJTU+TVyhFHgzKJlxQI0hsVTVHVCVLL0cZXZ7N5083XlsA\nTwm34q3kJM4XO2AcRmpUmAuveIBJk4cf4ESOkndAsfu5Wu6hSuOBy25XBl7kkKCv\nhhDo6nELzq0VRHKO0AAu1eqcU4rtNkKKyhEws50qjn5EbdrPY0G90f8z6z55a1sC\nPptH9Y+oUZX+yGWptXXKKLdd63clf7XHaUNu35xjBhBQ5Rpo8EW54CsjgYAlT4zH\nN9g9OZkCgYEA7xYDmYLqxaFdA1IISUw5P1q6fchXnwI9wsB5vdi5p2HGPMIeT729\nTHw6RH06biXFg4HdSLQDeJB3GT6pgJD2jDHELXGJD16b+xsADSDnCDgChSEhyzQ+\nWSq2vPxjzfQdb2YyIyyBk9qos5ajwi0mhSRiITpLXux4lLHeY1+0+2kCgYEA5MWE\nxxtwzDvyehTmKyCrAxi/wqyFprAaccRuEsWHSTfuD6gO93dtg2C0oMxNnhFkxtUh\n/IYwPc725+Qfa5WjMj+qpzGPtqbFJIbeOpSFy5bbCD5JP9xybF1t6713u192have\nKD3pOqTSgrBs1+ITWX4NVk9RrZb9XnCimBj1y9cCgYB2HHH6zGoe5/CDS2s8iqNd\nYPzwVqCytPC93UhHOWG+Btdf/KXsztdNibFfVF4hPBevN+CRohx02yl7FzG1iefC\nqnM33/bN2PdFvbjww2he7wyPqCaBtHV4p1lPU4AappZECkCKj9oTqNnennSX4KY+\n8BJqR9okMr3+9z/d59IIwQKBgHtVkVPWk2VIHF18zuoJXqj4usk1QYiwAFG9WKp+\nG4V5xbpjHE6F8GCXzkmyW1YQgog/d2cw4OkxnyM9dUMHFUiN0m745UXPexFKNJzY\nXZl45vT2v37SVk3dwNkK+HXn7Xn7QnXnism2+lbCzqtEkrH4pzAU6y/u6wHzL3VY\nX4tZAoGActMYzezB2gmUdTBYbKX1y9pd0zirf/MK8A5842SLan58+4a1hwjtjk3S\npDqXpOmBmrW2uwO273qefoNxdS+D20nkKTlxiq32WxBPOQNn3+hZV8NZ48VjecQx\ncPQ80cgjQ3UNtIYu9LDr4Wnw4nWwASirlsvhcZa42iQMCOLuAn4=\n-----END RSA PRIVATE KEY-----\n",
+            "private_key_pem_pkcs8": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDVqBMmy1N1Q+nI\nYq7FykQ3HvfdARHWVYLRErST93zpgkmci1mqwfncEOUABe/WgXpC7p55p51kIdLR\n3w6l2e1VQUvgh1oILlGNkAHbpWeDoZZblNixY3v2olcmR9xxe2TDyuKG94IkjnUO\nhvyF13R7pnei8e8PIo4UEkK5S8lT7Jvyn0HdBDKAbmwt1Fh8LnZLIiw9FAnNv+fu\nm2YfIwSOT05K0FZF9b9sENODljuDd6eFFw1FaDhfeWU8qz0gxlYBtwu4GIsdj9+T\nyca/9Q+M3rOu132naryn2crTKRiU8Lkdgp72e2uKW7J6zJyxqHneJAtykKlwFflL\n2nhX2GgvAgMBAAECggEAFfSAB1AEgvvYFbHiUMvgp6NkiA7YlORTnYVlDgF0EhDD\n3LTLIYtuUAliZta1Vx8V/7PCkDDDsSrynYNk33Ed/NFJaUivXUDZO4lNT5NXKEUe\nDMomXFAjSGxVNUdUJUsvRxldns3nTzdeWwBPCbfireQkzhc7YBxGalSYC694gEmT\nhx/gRI6Sd0Cx+7la7qFK44HLblcGXuSQoK+GEOjqcQvOrRVEco7QAC7V6pxTiu02\nQorKETCznSqOfkRt2s9jQb3R/zPrPnlrWwI+m0f1j6hRlf7IZam1dcoot13rdyV/\ntcdpQ27fnGMGEFDlGmjwRbngKyOBgCVPjMc32D05mQKBgQDvFgOZgurFoV0DUghJ\nTDk/Wrp9yFefAj3CwHm92LmnYcY8wh5Pvb1MfDpEfTpuJcWDgd1ItAN4kHcZPqmA\nkPaMMcQtcYkPXpv7GwANIOcIOAKFISHLND5ZKra8/GPN9B1vZjIjLIGT2qizlqPC\nLSaFJGIhOkte7HiUsd5jX7T7aQKBgQDkxYTHG3DMO/J6FOYrIKsDGL/CrIWmsBpx\nxG4SxYdJN+4PqA73d22DYLSgzE2eEWTG1SH8hjA9zvbn5B9rlaMyP6qnMY+2psUk\nht46lIXLltsIPkk/3HJsXW3rvXe7X3aFq94oPek6pNKCsGzX4hNZfg1WT1Gtlv1e\ncKKYGPXL1wKBgHYccfrMah7n8INLazyKo11g/PBWoLK08L3dSEc5Yb4G11/8pezO\n102JsV9UXiE8F6834JGiHHTbKXsXMbWJ58Kqczff9s3Y90W9uPDDaF7vDI+oJoG0\ndXinWU9TgBqmlkQKQIqP2hOo2d6edJfgpj7wEmpH2iQyvf73P93n0gjBAoGAe1WR\nU9aTZUgcXXzO6gleqPi6yTVBiLAAUb1Yqn4bhXnFumMcToXwYJfOSbJbVhCCiD93\nZzDg6TGfIz11QwcVSI3SbvjlRc97EUo0nNhdmXjm9Pa/ftJWTd3A2Qr4defteftC\ndeeKybb6VsLOq0SSsfinMBTrL+7rAfMvdVhfi1kCgYBy0xjN7MHaCZR1MFhspfXL\n2l3TOKt/8wrwDnzjZItqfnz7hrWHCO2OTdKkOpek6YGatba7A7bvep5+g3F1L4Pb\nSeQpOXGKrfZbEE85A2ff6FlXw1njxWN5xDFw9DzRyCNDdQ20hi70sOvhafDidbAB\nKKuWy+FxlrjaJAwI4u4Cfg==\n-----END PRIVATE KEY-----\n",
+            "public_key_fingerprint_md5": "ca:48:00:02:b4:ec:53:b8:09:d3:4b:dc:05:c8:a4:93",
+            "public_key_fingerprint_sha256": "SHA256:+2jKCuBL+LH59r/d3EJVEpsWacTWJpQTfwMPpYJr5dQ",
+            "public_key_openssh": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDVqBMmy1N1Q+nIYq7FykQ3HvfdARHWVYLRErST93zpgkmci1mqwfncEOUABe/WgXpC7p55p51kIdLR3w6l2e1VQUvgh1oILlGNkAHbpWeDoZZblNixY3v2olcmR9xxe2TDyuKG94IkjnUOhvyF13R7pnei8e8PIo4UEkK5S8lT7Jvyn0HdBDKAbmwt1Fh8LnZLIiw9FAnNv+fum2YfIwSOT05K0FZF9b9sENODljuDd6eFFw1FaDhfeWU8qz0gxlYBtwu4GIsdj9+Tyca/9Q+M3rOu132naryn2crTKRiU8Lkdgp72e2uKW7J6zJyxqHneJAtykKlwFflL2nhX2Ggv\n",
+            "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1agTJstTdUPpyGKuxcpE\nNx733QER1lWC0RK0k/d86YJJnItZqsH53BDlAAXv1oF6Qu6eeaedZCHS0d8Opdnt\nVUFL4IdaCC5RjZAB26Vng6GWW5TYsWN79qJXJkfccXtkw8rihveCJI51Dob8hdd0\ne6Z3ovHvDyKOFBJCuUvJU+yb8p9B3QQygG5sLdRYfC52SyIsPRQJzb/n7ptmHyME\njk9OStBWRfW/bBDTg5Y7g3enhRcNRWg4X3llPKs9IMZWAbcLuBiLHY/fk8nGv/UP\njN6zrtd9p2q8p9nK0ykYlPC5HYKe9ntriluyesycsah53iQLcpCpcBX5S9p4V9ho\nLwIDAQAB\n-----END PUBLIC KEY-----\n",
+            "rsa_bits": 2048
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "private_key_openssh"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "private_key_pem"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "private_key_pem_pkcs8"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "backups",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "acceleration_status": "",
+            "acl": null,
+            "arn": "arn:aws:s3:::sentinel-production-backups",
+            "bucket": "sentinel-production-backups",
+            "bucket_domain_name": "sentinel-production-backups.s3.amazonaws.com",
+            "bucket_prefix": "",
+            "bucket_regional_domain_name": "sentinel-production-backups.s3.us-east-1.amazonaws.com",
+            "cors_rule": [],
+            "force_destroy": false,
+            "grant": [
+              {
+                "id": "a0fa6c2badf94d33756f94cae5737f2188d9189f5881690877584cdc369c6e15",
+                "permissions": [
+                  "FULL_CONTROL"
+                ],
+                "type": "CanonicalUser",
+                "uri": ""
+              }
+            ],
+            "hosted_zone_id": "Z3AQBSTGFYJSTF",
+            "id": "sentinel-production-backups",
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "object_lock_enabled": false,
+            "policy": "",
+            "region": "us-east-1",
+            "replication_configuration": [],
+            "request_payer": "BucketOwner",
+            "server_side_encryption_configuration": [
+              {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {
+                        "kms_master_key_id": "",
+                        "sse_algorithm": "AES256"
+                      }
+                    ],
+                    "bucket_key_enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "Name": "sentinel-production-backups"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-backups",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "versioning": [
+              {
+                "enabled": false,
+                "mfa_delete": false
+              }
+            ],
+            "website": [],
+            "website_domain": null,
+            "website_endpoint": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjM2MDAwMDAwMDAwMDAsInJlYWQiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19"
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "data",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "acceleration_status": "",
+            "acl": null,
+            "arn": "arn:aws:s3:::sentinel-production-data",
+            "bucket": "sentinel-production-data",
+            "bucket_domain_name": "sentinel-production-data.s3.amazonaws.com",
+            "bucket_prefix": "",
+            "bucket_regional_domain_name": "sentinel-production-data.s3.us-east-1.amazonaws.com",
+            "cors_rule": [],
+            "force_destroy": true,
+            "grant": [
+              {
+                "id": "a0fa6c2badf94d33756f94cae5737f2188d9189f5881690877584cdc369c6e15",
+                "permissions": [
+                  "FULL_CONTROL"
+                ],
+                "type": "CanonicalUser",
+                "uri": ""
+              }
+            ],
+            "hosted_zone_id": "Z3AQBSTGFYJSTF",
+            "id": "sentinel-production-data",
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "object_lock_enabled": false,
+            "policy": "",
+            "region": "us-east-1",
+            "replication_configuration": [],
+            "request_payer": "BucketOwner",
+            "server_side_encryption_configuration": [
+              {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {
+                        "kms_master_key_id": "",
+                        "sse_algorithm": "AES256"
+                      }
+                    ],
+                    "bucket_key_enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "Name": "sentinel-production-data"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-data",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "versioning": [
+              {
+                "enabled": false,
+                "mfa_delete": false
+              }
+            ],
+            "website": [],
+            "website_domain": null,
+            "website_endpoint": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjM2MDAwMDAwMDAwMDAsInJlYWQiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19"
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "outputs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "acceleration_status": "",
+            "acl": null,
+            "arn": "arn:aws:s3:::sentinel-production-outputs",
+            "bucket": "sentinel-production-outputs",
+            "bucket_domain_name": "sentinel-production-outputs.s3.amazonaws.com",
+            "bucket_prefix": "",
+            "bucket_regional_domain_name": "sentinel-production-outputs.s3.us-east-1.amazonaws.com",
+            "cors_rule": [],
+            "force_destroy": true,
+            "grant": [
+              {
+                "id": "a0fa6c2badf94d33756f94cae5737f2188d9189f5881690877584cdc369c6e15",
+                "permissions": [
+                  "FULL_CONTROL"
+                ],
+                "type": "CanonicalUser",
+                "uri": ""
+              }
+            ],
+            "hosted_zone_id": "Z3AQBSTGFYJSTF",
+            "id": "sentinel-production-outputs",
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "object_lock_enabled": false,
+            "policy": "",
+            "region": "us-east-1",
+            "replication_configuration": [],
+            "request_payer": "BucketOwner",
+            "server_side_encryption_configuration": [
+              {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {
+                        "kms_master_key_id": "",
+                        "sse_algorithm": "AES256"
+                      }
+                    ],
+                    "bucket_key_enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "Name": "sentinel-production-outputs"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-outputs",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "versioning": [
+              {
+                "enabled": false,
+                "mfa_delete": false
+              }
+            ],
+            "website": [],
+            "website_domain": null,
+            "website_endpoint": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjM2MDAwMDAwMDAwMDAsInJlYWQiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19"
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_lifecycle_configuration",
+      "name": "backups",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "bucket": "sentinel-production-backups",
+            "expected_bucket_owner": "",
+            "id": "sentinel-production-backups",
+            "rule": [
+              {
+                "abort_incomplete_multipart_upload": [],
+                "expiration": [
+                  {
+                    "date": null,
+                    "days": 90,
+                    "expired_object_delete_marker": false
+                  }
+                ],
+                "filter": [
+                  {
+                    "and": [],
+                    "object_size_greater_than": null,
+                    "object_size_less_than": null,
+                    "prefix": "",
+                    "tag": []
+                  }
+                ],
+                "id": "expire-old-backups",
+                "noncurrent_version_expiration": [
+                  {
+                    "newer_noncurrent_versions": null,
+                    "noncurrent_days": 30
+                  }
+                ],
+                "noncurrent_version_transition": [],
+                "prefix": "",
+                "status": "Enabled",
+                "transition": []
+              }
+            ],
+            "timeouts": null,
+            "transition_default_minimum_object_size": "all_storage_classes_128K"
+          },
+          "sensitive_attributes": [],
+          "dependencies": [
+            "module.s3.aws_s3_bucket.backups"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "backups",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "block_public_acls": true,
+            "block_public_policy": true,
+            "bucket": "sentinel-production-backups",
+            "id": "sentinel-production-backups",
+            "ignore_public_acls": true,
+            "restrict_public_buckets": true
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.backups"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "data",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "block_public_acls": true,
+            "block_public_policy": true,
+            "bucket": "sentinel-production-data",
+            "id": "sentinel-production-data",
+            "ignore_public_acls": true,
+            "restrict_public_buckets": true
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.data"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "outputs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "block_public_acls": true,
+            "block_public_policy": true,
+            "bucket": "sentinel-production-outputs",
+            "id": "sentinel-production-outputs",
+            "ignore_public_acls": true,
+            "restrict_public_buckets": true
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.outputs"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "backups",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "sentinel-production-backups",
+            "expected_bucket_owner": "",
+            "id": "sentinel-production-backups",
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "kms_master_key_id": "",
+                    "sse_algorithm": "AES256"
+                  }
+                ],
+                "bucket_key_enabled": null
+              }
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.backups"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "data",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "sentinel-production-data",
+            "expected_bucket_owner": "",
+            "id": "sentinel-production-data",
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "kms_master_key_id": "",
+                    "sse_algorithm": "AES256"
+                  }
+                ],
+                "bucket_key_enabled": null
+              }
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.data"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "outputs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "sentinel-production-outputs",
+            "expected_bucket_owner": "",
+            "id": "sentinel-production-outputs",
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "kms_master_key_id": "",
+                    "sse_algorithm": "AES256"
+                  }
+                ],
+                "bucket_key_enabled": null
+              }
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.outputs"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_versioning",
+      "name": "backups",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "sentinel-production-backups",
+            "expected_bucket_owner": "",
+            "id": "sentinel-production-backups",
+            "mfa": null,
+            "versioning_configuration": [
+              {
+                "mfa_delete": "",
+                "status": "Enabled"
+              }
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.backups"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.s3",
+      "mode": "managed",
+      "type": "aws_s3_bucket_versioning",
+      "name": "data",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "sentinel-production-data",
+            "expected_bucket_owner": "",
+            "id": "sentinel-production-data",
+            "mfa": null,
+            "versioning_configuration": [
+              {
+                "mfa_delete": "",
+                "status": "Enabled"
+              }
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "module.s3.aws_s3_bucket.data"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_eip",
+      "name": "nat",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "address": null,
+            "allocation_id": "eipalloc-0424877bb3eab4ee7",
+            "arn": "arn:aws:ec2:us-east-1:334317073419:elastic-ip/eipalloc-0424877bb3eab4ee7",
+            "associate_with_private_ip": null,
+            "association_id": "",
+            "carrier_ip": "",
+            "customer_owned_ip": "",
+            "customer_owned_ipv4_pool": "",
+            "domain": "vpc",
+            "id": "eipalloc-0424877bb3eab4ee7",
+            "instance": "",
+            "ipam_pool_id": null,
+            "network_border_group": "us-east-1",
+            "network_interface": "",
+            "private_dns": null,
+            "private_ip": "",
+            "ptr_record": "",
+            "public_dns": "ec2-54-172-132-187.compute-1.amazonaws.com",
+            "public_ip": "54.172.132.187",
+            "public_ipv4_pool": "amazon",
+            "tags": {
+              "Name": "sentinel-production-nat-eip"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-nat-eip",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxODAwMDAwMDAwMDAsInJlYWQiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozMDAwMDAwMDAwMDB9fQ=="
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_internet_gateway",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:internet-gateway/igw-02845d9e199a44174",
+            "id": "igw-02845d9e199a44174",
+            "owner_id": "334317073419",
+            "tags": {
+              "Name": "sentinel-production-igw"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-igw",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_nat_gateway",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allocation_id": "eipalloc-0424877bb3eab4ee7",
+            "association_id": "eipassoc-0c367f20913141ed0",
+            "connectivity_type": "public",
+            "id": "nat-02fc895666552466d",
+            "network_interface_id": "eni-0ce42edb12f405eee",
+            "private_ip": "10.0.1.6",
+            "public_ip": "54.172.132.187",
+            "secondary_allocation_ids": null,
+            "secondary_private_ip_address_count": 0,
+            "secondary_private_ip_addresses": [],
+            "subnet_id": "subnet-05fd2d15d0a6923eb",
+            "tags": {
+              "Name": "sentinel-production-nat"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-nat",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTgwMDAwMDAwMDAwMCwidXBkYXRlIjo2MDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "module.vpc.aws_eip.nat",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:route-table/rtb-058581607ab8e2534",
+            "id": "rtb-058581607ab8e2534",
+            "owner_id": "334317073419",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "nat-02fc895666552466d",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "sentinel-production-private-rt"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-private-rt",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_eip.nat",
+            "module.vpc.aws_nat_gateway.main",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:route-table/rtb-05bb9e4590946bd6b",
+            "id": "rtb-05bb9e4590946bd6b",
+            "owner_id": "334317073419",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "igw-02845d9e199a44174",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "sentinel-production-public-rt"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-public-rt",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_internet_gateway.main",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-02a4286f39f8ad032",
+            "route_table_id": "rtb-058581607ab8e2534",
+            "subnet_id": "subnet-0a1942d7f5b72a410",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_eip.nat",
+            "module.vpc.aws_nat_gateway.main",
+            "module.vpc.aws_route_table.private",
+            "module.vpc.aws_subnet.private",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-085ec7865b1b52481",
+            "route_table_id": "rtb-058581607ab8e2534",
+            "subnet_id": "subnet-0b40ee178461a28af",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_eip.nat",
+            "module.vpc.aws_nat_gateway.main",
+            "module.vpc.aws_route_table.private",
+            "module.vpc.aws_subnet.private",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0e900ab9f815912b8",
+            "route_table_id": "rtb-05bb9e4590946bd6b",
+            "subnet_id": "subnet-05fd2d15d0a6923eb",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_internet_gateway.main",
+            "module.vpc.aws_route_table.public",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0131c1ac5c60dbd40",
+            "route_table_id": "rtb-05bb9e4590946bd6b",
+            "subnet_id": "subnet-0c46b29cec6b27d11",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "module.vpc.aws_internet_gateway.main",
+            "module.vpc.aws_route_table.public",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "ec2",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:security-group/sg-0cd7a176b052a2721",
+            "description": "Security group for Sentinel EC2 instance",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "All outbound traffic",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0cd7a176b052a2721",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "Grafana from allowed CIDRs",
+                "from_port": 3000,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 3000
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTP from internet",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTPS from internet",
+                "from_port": 443,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 443
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "SSH from allowed CIDRs",
+                "from_port": 22,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 22
+              }
+            ],
+            "name": "sentinel-production-ec2-sg",
+            "name_prefix": "",
+            "owner_id": "334317073419",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "sentinel-production-ec2-sg"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-ec2-sg",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "rds",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:security-group/sg-01afb822ac8bbc1f5",
+            "description": "Security group for Sentinel RDS PostgreSQL",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "All outbound traffic",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-01afb822ac8bbc1f5",
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "description": "PostgreSQL from EC2 security group",
+                "from_port": 5432,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-0cd7a176b052a2721"
+                ],
+                "self": false,
+                "to_port": 5432
+              }
+            ],
+            "name": "sentinel-production-rds-sg",
+            "name_prefix": "",
+            "owner_id": "334317073419",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "sentinel-production-rds-sg"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-rds-sg",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "module.vpc.aws_security_group.ec2",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:subnet/subnet-0a1942d7f5b72a410",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1a",
+            "availability_zone_id": "use1-az1",
+            "cidr_block": "10.0.10.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0a1942d7f5b72a410",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "334317073419",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "sentinel-production-private-1"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-private-1",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.vpc.aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:subnet/subnet-0b40ee178461a28af",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1b",
+            "availability_zone_id": "use1-az2",
+            "cidr_block": "10.0.11.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0b40ee178461a28af",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "334317073419",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "sentinel-production-private-2"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-private-2",
+              "Project": "Sentinel-Cyber-AI"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:subnet/subnet-05fd2d15d0a6923eb",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1a",
+            "availability_zone_id": "use1-az1",
+            "cidr_block": "10.0.1.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-05fd2d15d0a6923eb",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "334317073419",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "sentinel-production-public-1",
+              "kubernetes.io/cluster/sentinel": "shared",
+              "kubernetes.io/role/elb": "1"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-public-1",
+              "Project": "Sentinel-Cyber-AI",
+              "kubernetes.io/cluster/sentinel": "shared",
+              "kubernetes.io/role/elb": "1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.vpc.aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:subnet/subnet-0c46b29cec6b27d11",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1b",
+            "availability_zone_id": "use1-az2",
+            "cidr_block": "10.0.2.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0c46b29cec6b27d11",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "334317073419",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "sentinel-production-public-2",
+              "kubernetes.io/cluster/sentinel": "shared",
+              "kubernetes.io/role/elb": "1"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-public-2",
+              "Project": "Sentinel-Cyber-AI",
+              "kubernetes.io/cluster/sentinel": "shared",
+              "kubernetes.io/role/elb": "1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0adc226d4827568df"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.vpc",
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:334317073419:vpc/vpc-0adc226d4827568df",
+            "assign_generated_ipv6_cidr_block": false,
+            "cidr_block": "10.0.0.0/16",
+            "default_network_acl_id": "acl-04489fcc6d315e71f",
+            "default_route_table_id": "rtb-0b0701715c0c2ba0a",
+            "default_security_group_id": "sg-09f9c0e5e0a86fa49",
+            "dhcp_options_id": "dopt-023dd68d81593d32d",
+            "enable_dns_hostnames": true,
+            "enable_dns_support": true,
+            "enable_network_address_usage_metrics": false,
+            "id": "vpc-0adc226d4827568df",
+            "instance_tenancy": "default",
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_network_border_group": "",
+            "ipv6_ipam_pool_id": "",
+            "ipv6_netmask_length": 0,
+            "main_route_table_id": "rtb-0b0701715c0c2ba0a",
+            "owner_id": "334317073419",
+            "tags": {
+              "Name": "sentinel-production-vpc"
+            },
+            "tags_all": {
+              "CostCenter": "sentinel-production",
+              "Environment": "production",
+              "ManagedBy": "Terraform",
+              "Name": "sentinel-production-vpc",
+              "Project": "Sentinel-Cyber-AI"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ=="
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}
+

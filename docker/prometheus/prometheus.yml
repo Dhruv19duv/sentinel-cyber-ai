@@ -1,0 +1,105 @@
+# =============================================================================
+# Sentinel Cyber AI — Prometheus Configuration
+# Scrapes metrics from all production services for monitoring & alerting
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+  external_labels:
+    cluster: sentinel-prod
+    origin: prometheus
+
+# ── Alerting Configuration ──
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+      # Add Alertmanager targets here if you run one:
+      # - targets: ['alertmanager:9093']
+
+# ── Rule Files ──
+rule_files:
+  - "alert.rules.yml"
+
+# ── Scrape Targets ──
+scrape_configs:
+
+  # ── Sentinel API ──
+  - job_name: "sentinel-api"
+    scrape_interval: 10s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["api:8080"]
+        labels:
+          service: "api"
+          tier: "backend"
+
+  # ── Sentinel Dashboard ──
+  - job_name: "sentinel-dashboard"
+    scrape_interval: 15s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["dashboard:8500"]
+        labels:
+          service: "dashboard"
+          tier: "frontend"
+
+  # ── PostgreSQL Exporter ──
+  - job_name: "postgres"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          service: "postgres"
+          tier: "database"
+
+  # ── Redis Exporter ──
+  # Uncomment when running redis_exporter alongside:
+  # - job_name: "redis"
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+  #       labels:
+  #         service: "redis"
+  #         tier: "cache"
+
+  # ── Nginx Exporter ──
+  # Uncomment when using nginx-prometheus-exporter:
+  # - job_name: "nginx"
+  #   scrape_interval: 15s
+  #   static_configs:
+  #     - targets: ["nginx-exporter:9113"]
+  #       labels:
+  #         service: "nginx"
+  #         tier: "proxy"
+
+  # ── Node Exporter (host metrics) ──
+  - job_name: "node"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "host"
+          tier: "infrastructure"
+
+  # ── Docker Engine Metrics ──
+  # Uncomment when exposing Docker daemon metrics:
+  # - job_name: "docker"
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ["docker:9323"]
+  #       labels:
+  #         service: "docker"
+  #         tier: "infrastructure"
+
+  # ── Self-Monitoring ──
+  - job_name: "prometheus"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: "prometheus"
+          tier: "monitoring"

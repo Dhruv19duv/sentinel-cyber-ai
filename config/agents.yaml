@@ -1,0 +1,132 @@
+# Sentinel Cyber AI — Multi-Agent System Configuration
+# =====================================================
+# Defines the specialized agents, their models, routing rules, and tool access.
+
+orchestrator:
+  name: "Sentinel-Orchestrator"
+  description: "Coordinates all sub-agents, routes queries, manages tool calls"
+  model: "deepseek-r1-671b"  # DeepSeek R1 671B for maximum reasoning
+  max_concurrent_agents: 5
+  timeout_seconds: 300
+  fallback_strategy: "escalate_to_human"
+
+agents:
+  - name: "Code-Scanner"
+    description: "Analyzes source code for vulnerabilities using static analysis + AI"
+    model: "qwen3-235b"  # Qwen 3 235B — best for code understanding
+    tools:
+      - codeql_analyze
+      - semgrep_scan
+      - pattern_search
+    capabilities:
+      - vulnerability_detection
+      - static_analysis
+      - pattern_matching
+    routing_patterns:
+      - "vulnerability"
+      - "security flaw"
+      - "vuln"
+      - "CWE"
+
+  - name: "Exploit-Analyzer"
+    description: "Analyzes potential exploits and attack vectors (sandboxed)"
+    model: "deepseek-r1-671b"  # DeepSeek R1 — best for deep reasoning chains
+    tools:
+      - sandbox_execute
+      - binary_analysis
+      - exploit_database
+    capabilities:
+      - exploit_analysis
+      - chain_of_thought
+      - sandboxed_execution
+    routing_patterns:
+      - "exploit"
+      - "attack vector"
+      - "zero-day"
+      - "RCE"
+
+  - name: "Patch-Generator"
+    description: "Generates secure code patches and fixes for vulnerabilities"
+    model: "mistral-large-675b"  # Mistral Large 3 675B — enterprise grade
+    tools:
+      - codegen
+      - validate_patch
+      - test_runner
+    capabilities:
+      - secure_code_generation
+      - patch_verification
+      - multi_language
+    routing_patterns:
+      - "fix"
+      - "patch"
+      - "remediate"
+      - "secure"
+
+  - name: "Threat-Intelligence"
+    description: "Searches CVE databases, threat feeds, and security advisories"
+    model: "qwen3-235b"
+    tools:
+      - cve_search
+      - threat_feeds
+      - vulnerability_database
+    capabilities:
+      - threat_intel
+      - cve_analysis
+      - trend_detection
+    routing_patterns:
+      - "CVE"
+      - "advisory"
+      - "threat"
+      - "intelligence"
+
+  - name: "Report-Generator"
+    description: "Generates comprehensive security reports from analysis results"
+    model: "qwen3-235b"
+    tools:
+      - report_writer
+      - markdown_render
+      - pdf_generate
+    capabilities:
+      - report_generation
+      - compliance_mapping
+      - severity_scoring
+    routing_patterns:
+      - "report"
+      - "summary"
+      - "audit"
+      - "compliance"
+
+models:
+  available:
+    - name: "deepseek-r1-671b"
+      type: "mixture_of_experts"
+      parameters: "671B"
+      active_per_token: "37B"
+      license: "MIT"
+      min_vram_gb: 140
+      quantized_vram_gb: 48
+
+    - name: "qwen3-235b"
+      type: "mixture_of_experts"
+      parameters: "235B"
+      active_per_token: "24B"
+      license: "Apache 2.0"
+      min_vram_gb: 48
+      quantized_vram_gb: 16
+
+    - name: "mistral-large-675b"
+      type: "mixture_of_experts"
+      parameters: "675B"
+      active_per_token: "41B"
+      license: "Apache 2.0"
+      min_vram_gb: 140
+      quantized_vram_gb: 48
+
+sandbox:
+  enabled: true
+  container_image: "sentinel-sandbox:latest"
+  memory_limit_mb: 4096
+  cpu_limit: 2
+  network_disabled: true
+  timeout_seconds: 60
+  read_only_rootfs: true
