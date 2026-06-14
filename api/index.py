@@ -20,6 +20,7 @@ else:
     logger.warning(f"⚠️ Landing page not found at {_landing_path}")
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
 
@@ -34,6 +35,15 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+)
+
+# ── CORS ──
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Middleware: metrics ──
