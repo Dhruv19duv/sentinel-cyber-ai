@@ -1,15 +1,10 @@
 # Exclude heavy/unnecessary files from Vercel deployment
 
-# Terraform (AWS/GCP infrastructure)
+# Terraform (AWS infrastructure)
 terraform/
-*.tf
-*.tfstate*
-*.tfvars
 
 # Docker
 docker/
-Dockerfile*
-docker-compose*
 
 # ML models & data
 models/
@@ -21,40 +16,12 @@ tests/
 
 # Git
 .git/
-.gitignore
-.gitattributes
 
 # Python cache
 __pycache__/
 *.pyc
-*.pyo
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 
-# Documentation
-*.md
-*.rst
-LICENSE
-CONTRIBUTING*
-CHANGELOG*
-CODE_OF_CONDUCT*
-
-# CI/CD
-.github/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Requirements (not needed on Vercel - uses requirements.vercel.txt)
+# Other requirements files (Vercel uses pyproject.toml)
 requirements.txt
 requirements.conversion.txt
 requirements-deploy.txt

@@ -3,6 +3,13 @@ name = "sentinel-cyber-ai"
 version = "2.0.0"
 description = "Enterprise Multi-Agent Cybersecurity Platform"
 requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+]
+
+[tool.vercel]
+entrypoint = "api/index.py:app"
 
 [build-system]
 requires = ["setuptools>=68.0"]
