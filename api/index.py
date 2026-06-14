@@ -22,16 +22,8 @@ logger = logging.getLogger("sentinel-vercel")
 
 logger.info("🚀 Starting Sentinel Cyber AI on Vercel (lightweight mode)")
 
-# Verify critical files exist
-landing_page = os.path.join(project_root, "src", "api", "landing_page.html")
-if os.path.exists(landing_page):
-    logger.info(f"✅ landing_page.html found at {landing_page}")
-else:
-    logger.error(f"❌ landing_page.html NOT found at {landing_page}")
-    # List what's available
-    src_api = os.path.join(project_root, "src", "api")
-    if os.path.exists(src_api):
-        logger.info(f"Files in src/api/: {os.listdir(src_api)}")
+# app must be defined at module level for Vercel to detect it
+app = None
 
 try:
     from src.api.server import create_app
@@ -39,20 +31,25 @@ try:
     logger.info("✅ Sentinel Cyber AI ready on Vercel")
 except Exception as e:
     logger.error(f"❌ Failed to create app: {e}", exc_info=True)
-    # Fallback: create a minimal app that returns error info
+
+if app is None:
+    # Fallback: create a minimal debug app
     from fastapi import FastAPI
-    from fastapi.responses import JSONResponse
-    app = FastAPI(title="Sentinel Cyber AI (Vercel Error)")
+    from fastapi.responses import JSONResponse, HTMLResponse
     
-    @app.get("/")
-    @app.get("/{path:path}")
-    async def error_route(path=""):
+    fallback_app = FastAPI(title="Sentinel Cyber AI (Vercel Error)")
+    
+    @fallback_app.get("/")
+    @fallback_app.get("/{path:path}")
+    async def error_route(path: str = ""):
         return JSONResponse(
             status_code=500,
             content={
-                "error": f"App creation failed: {str(e)}",
+                "error": "App creation failed",
+                "detail": str(e) if 'e' in dir() else "Unknown error",
                 "hint": "Check Vercel build logs for details"
             }
         )
     
+    app = fallback_app
     logger.warning("⚠️ Using fallback error app")
