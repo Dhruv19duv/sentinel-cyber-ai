@@ -1,9 +1,12 @@
-"""Minimal Vercel test - barebones FastAPI app."""
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+"""Minimal Vercel Python handler - no external dependencies."""
+import json
 
-app = FastAPI()
-
-@app.get("/")
-async def root():
-    return {"message": "Hello from Sentinel Cyber AI on Vercel!", "status": "ok"}
+def handler(event, context):
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({
+            "message": "Sentinel Cyber AI running on Vercel!",
+            "status": "ok"
+        })
+    }
