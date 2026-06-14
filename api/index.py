@@ -1,55 +1,73 @@
-"""Vercel serverless entry point for Sentinel Cyber AI API.
+"""Self-contained Vercel serverless entry point for Sentinel Cyber AI.
 
-Lightweight deployment for Vercel's serverless environment.
-Heavy ML/AI dependencies (torch, transformers, etc.) run on AWS EC2.
+Lightweight standalone app — no dependency on src/ imports (avoids ML deps issues).
 """
-import sys
 import os
-import json
+import time
 import logging
 
-# Add project root to path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
-
-# Mark as Vercel environment so the app can skip heavy imports
-os.environ["SENTINEL_PLATFORM"] = "vercel"
-os.environ["SENTINEL_CORS_ORIGINS"] = os.environ.get("SENTINEL_CORS_ORIGINS", "*")
-os.environ["SENTINEL_LOG_LEVEL"] = os.environ.get("SENTINEL_LOG_LEVEL", "INFO")
-
-logging.basicConfig(level=getattr(logging, os.environ["SENTINEL_LOG_LEVEL"]))
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sentinel-vercel")
 
-logger.info("🚀 Starting Sentinel Cyber AI on Vercel (lightweight mode)")
+# ── Load landing page ──
+_LANDING_PAGE = "<!DOCTYPE html><html><body><h1>Loading...</h1></body></html>"
+_landing_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "api", "landing_page.html")
+if os.path.exists(_landing_path):
+    with open(_landing_path, "r", encoding="utf-8") as _f:
+        _LANDING_PAGE = _f.read()
+    logger.info("✅ Landing page loaded")
+else:
+    logger.warning(f"⚠️ Landing page not found at {_landing_path}")
 
-# app must be defined at module level for Vercel to detect it
-app = None
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse, Response
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
 
-try:
-    from src.api.server import create_app
-    app = create_app()
-    logger.info("✅ Sentinel Cyber AI ready on Vercel")
-except Exception as e:
-    logger.error(f"❌ Failed to create app: {e}", exc_info=True)
+# ── Metrics ──
+METRIC_REQUESTS = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"])
+METRIC_LATENCY = Histogram("http_request_duration_seconds", "HTTP request duration", ["method", "endpoint"])
 
-if app is None:
-    # Fallback: create a minimal debug app
-    from fastapi import FastAPI
-    from fastapi.responses import JSONResponse, HTMLResponse
-    
-    fallback_app = FastAPI(title="Sentinel Cyber AI (Vercel Error)")
-    
-    @fallback_app.get("/")
-    @fallback_app.get("/{path:path}")
-    async def error_route(path: str = ""):
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "App creation failed",
-                "detail": str(e) if 'e' in dir() else "Unknown error",
-                "hint": "Check Vercel build logs for details"
-            }
-        )
-    
-    app = fallback_app
-    logger.warning("⚠️ Using fallback error app")
+# ── Create App ──
+app = FastAPI(
+    title="Sentinel Cyber AI",
+    description="Enterprise Multi-Agent Cybersecurity Platform",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# ── Middleware: metrics ──
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    elapsed = time.time() - start
+    METRIC_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(elapsed)
+    METRIC_REQUESTS.labels(method=request.method, endpoint=request.url.path, status=response.status_code).inc()
+    response.headers["X-Process-Time-Ms"] = str(int(elapsed * 1000))
+    return response
+
+# ── Routes ──
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return HTMLResponse(content=_LANDING_PAGE)
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "version": "2.0.0", "timestamp": time.time()}
+
+@app.get("/api/info")
+async def api_info():
+    return {
+        "name": "Sentinel Cyber AI",
+        "version": "2.0.0",
+        "status": "operational",
+        "docs": "/docs",
+        "health": "/health",
+        "metrics": "/metrics",
+        "timestamp": time.time(),
+    }
+
+@app.get("/metrics")
+async def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
