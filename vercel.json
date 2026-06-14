@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "api/index.py" }
+  ],
+  "installCommand": "pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir setuptools wheel && pip install --no-cache-dir -r requirements.txt",
+  "env": {
+    "SENTINEL_CORS_ORIGINS": "*",
+    "SENTINEL_LOG_LEVEL": "INFO"
+  }
+}
