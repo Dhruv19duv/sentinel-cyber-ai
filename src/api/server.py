@@ -133,41 +133,53 @@ async def lifespan(app: FastAPI):
     """Application lifecycle — initialize and cleanup."""
     # Startup
     logger.info("🚀 Sentinel Cyber AI API starting...")
-    from src.main import setup_orchestrator
-    app.state.orchestrator = setup_orchestrator()
 
-    # Import and setup routes
-    from src.api.routes import setup_routes
-    app.include_router(setup_routes(app.state.orchestrator))
+    # Check if running on Vercel (lightweight mode)
+    is_vercel = os.environ.get("SENTINEL_PLATFORM") == "vercel"
 
-    # Setup integration admin routes
-    from src.api.integration_routes import setup_integration_routes
-    app.include_router(setup_integration_routes(app.state.orchestrator))
+    if is_vercel:
+        logger.info("Running on Vercel — skipping ML-heavy orchestrator setup")
+        app.state.orchestrator = None
+    else:
+        try:
+            from src.main import setup_orchestrator
+            app.state.orchestrator = setup_orchestrator()
 
-    # Setup Slack webhook routes
-    from src.integrations.slack_bot import setup_slack_routes
-    from fastapi import APIRouter
-    slack_router = APIRouter()
-    app.include_router(setup_slack_routes(slack_router, app.state.orchestrator))
+            # Import and setup routes
+            from src.api.routes import setup_routes
+            app.include_router(setup_routes(app.state.orchestrator))
 
-    # Setup Discord interaction routes
-    from src.integrations.discord_bot import setup_discord_routes
-    discord_router = APIRouter()
-    app.include_router(setup_discord_routes(discord_router, app.state.orchestrator))
+            # Setup integration admin routes
+            from src.api.integration_routes import setup_integration_routes
+            app.include_router(setup_integration_routes(app.state.orchestrator))
 
-    # Setup GitHub webhook routes
-    from src.integrations.github_webhook import setup_github_routes
-    gh_router = APIRouter()
-    mon = getattr(app.state.orchestrator, 'monitoring', None)
-    app.include_router(setup_github_routes(gh_router, app.state.orchestrator, mon))
+            # Setup Slack webhook routes
+            from src.integrations.slack_bot import setup_slack_routes
+            from fastapi import APIRouter
+            slack_router = APIRouter()
+            app.include_router(setup_slack_routes(slack_router, app.state.orchestrator))
 
-    # Setup SIEM routes
-    from src.integrations.siem import SIEMForwarder
-    app.state.siem = SIEMForwarder()
+            # Setup Discord interaction routes
+            from src.integrations.discord_bot import setup_discord_routes
+            discord_router = APIRouter()
+            app.include_router(setup_discord_routes(discord_router, app.state.orchestrator))
 
-    # Setup Auto-Remediation routes
-    from src.integrations.auto_remediation import AutoRemediationEngine
-    app.state.remediation = AutoRemediationEngine(app.state.orchestrator)
+            # Setup GitHub webhook routes
+            from src.integrations.github_webhook import setup_github_routes
+            gh_router = APIRouter()
+            mon = getattr(app.state.orchestrator, 'monitoring', None)
+            app.include_router(setup_github_routes(gh_router, app.state.orchestrator, mon))
+
+            # Setup SIEM routes
+            from src.integrations.siem import SIEMForwarder
+            app.state.siem = SIEMForwarder()
+
+            # Setup Auto-Remediation routes
+            from src.integrations.auto_remediation import AutoRemediationEngine
+            app.state.remediation = AutoRemediationEngine(app.state.orchestrator)
+        except ImportError as e:
+            logger.warning(f"ML dependencies not available, running in API-only mode: {e}")
+            app.state.orchestrator = None
 
     logger.info("Sentinel API ready")
     yield

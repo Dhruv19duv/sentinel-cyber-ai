@@ -63,3 +63,5 @@ Thumbs.db
 
 # k6
 tests/k6/results/
+
+.vercel
