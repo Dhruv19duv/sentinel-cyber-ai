@@ -17,6 +17,8 @@
   "env": {
     "SENTINEL_CORS_ORIGINS": "*",
     "SENTINEL_LOG_LEVEL": "INFO",
-    "SENTINEL_PLATFORM": "vercel"
+    "SENTINEL_PLATFORM": "vercel",
+    "PIP_REQUIRE_VIRTUALENV": "false",
+    "UV_DISABLE": "1"
   }
 }
