@@ -1,23 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
-    }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "api/index.py" }
-  ],
   "installCommand": "pip install --no-cache-dir -r requirements.vercel.txt",
   "env": {
     "SENTINEL_CORS_ORIGINS": "*",
     "SENTINEL_LOG_LEVEL": "INFO",
     "SENTINEL_PLATFORM": "vercel",
-    "PIP_REQUIRE_VIRTUALENV": "false",
-    "UV_DISABLE": "1"
+    "PIP_REQUIRE_VIRTUALENV": "false"
   }
 }
